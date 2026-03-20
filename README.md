@@ -1,4 +1,5 @@
 # Geometry Plugin for Obsidian
+<img width="780" height="515" alt="image" src="https://github.com/user-attachments/assets/64074969-62c3-455c-a0c8-5e31d9c1e83f" />
 
 An interactive compass-and-straightedge geometry plugin for [Obsidian](https://obsidian.md). Write YAML inside `geometry` code blocks to define constructions, or open a blank canvas and draw with Euclidea-style tools.
 
