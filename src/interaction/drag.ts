@@ -149,6 +149,7 @@ export function setupInteraction(
     let best: SnapTarget | null = null;
     let bestDist = Infinity;
 
+    // Priority 1: existing points (tightest threshold)
     for (const [, obj] of resolved.objects) {
       if (obj.type !== "point") continue;
       const d = geo.dist(mathPos, obj.pos);
@@ -160,11 +161,26 @@ export function setupInteraction(
 
     if (best && bestDist < snapRadius * 0.6) return best;
 
+    // Priority 2: implicit intersections
     const intersections = computeAllIntersections(resolved);
     for (const pos of intersections) {
       const d = geo.dist(mathPos, pos);
       if (d < snapRadius && d < bestDist) {
         best = { pos, pointId: null };
+        bestDist = d;
+      }
+    }
+
+    if (best) return best;
+
+    // Priority 3: snap to nearest curve (line, segment, ray, circle edge)
+    const curveSnapRadius = SNAP_RADIUS_PX / transform.scale;
+    for (const [, obj] of resolved.objects) {
+      const snapped = closestPointOnCurve(mathPos, obj);
+      if (!snapped) continue;
+      const d = geo.dist(mathPos, snapped);
+      if (d < curveSnapRadius && d < bestDist) {
+        best = { pos: snapped, pointId: null };
         bestDist = d;
       }
     }
@@ -607,6 +623,57 @@ export function setupInteraction(
   canvas.addEventListener("keydown", onKeyDown);
 
   return { setTool };
+}
+
+// ── Closest point on a curve (for snap-to-curve) ──
+
+function closestPointOnCurve(p: Vec2, obj: ResolvedObject): Vec2 | null {
+  switch (obj.type) {
+    case "line": {
+      const line: geo.Line = { point: obj.point, dir: obj.dir };
+      return closestOnLine(p, line);
+    }
+    case "segment": {
+      return closestOnSegment(p, obj.from, obj.to);
+    }
+    case "ray": {
+      return closestOnRay(p, obj.origin, obj.dir);
+    }
+    case "circle": {
+      // Project onto circumference
+      const dx = p[0] - obj.center[0];
+      const dy = p[1] - obj.center[1];
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 1e-10) return null; // at center, no unique closest point
+      return [
+        obj.center[0] + (dx / d) * obj.radius,
+        obj.center[1] + (dy / d) * obj.radius,
+      ];
+    }
+    default:
+      return null;
+  }
+}
+
+function closestOnLine(p: Vec2, line: geo.Line): Vec2 {
+  const v = geo.sub(p, line.point);
+  const t = geo.dot(v, line.dir);
+  return geo.add(line.point, geo.scale(line.dir, t));
+}
+
+function closestOnSegment(p: Vec2, a: Vec2, b: Vec2): Vec2 {
+  const line = geo.lineFromTwoPoints(a, b);
+  const len = geo.dist(a, b);
+  const v = geo.sub(p, a);
+  const t = Math.max(0, Math.min(len, geo.dot(v, line.dir)));
+  return geo.add(a, geo.scale(line.dir, t));
+}
+
+function closestOnRay(p: Vec2, origin: Vec2, dir: Vec2): Vec2 {
+  const normDir = geo.normalize(dir);
+  const v = geo.sub(p, origin);
+  const t = Math.max(0, geo.dot(v, normDir));
+  return geo.add(origin, geo.scale(normDir, t));
 }
 
 // ── Distance from a point to a resolved object (for line hit-testing) ──
