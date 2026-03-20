@@ -61,6 +61,13 @@ export function setupInteraction(
   let currentSnap: SnapTarget | null = null;
   let highlightLineId: string | null = null; // line highlighted for perp/parallel
 
+  // ── Drag-to-create state ──
+  // For tools like circle, segment, line: mousedown places the first point,
+  // drag shows the preview, mouseup places the second point (Euclidea-style).
+  let dragCreateOriginPx: Vec2 | null = null; // pixel pos of mousedown
+  let dragCreateActive = false; // true once mouse has moved enough from origin
+  const DRAG_THRESHOLD_PX = 5; // minimum drag distance to activate drag-create
+
   // ── Undo / Redo stack ──
   const undoStack: SceneSnapshot[] = [];
   const redoStack: SceneSnapshot[] = [];
@@ -107,6 +114,8 @@ export function setupInteraction(
     ghostPos = null;
     currentSnap = null;
     highlightLineId = null;
+    dragCreateOriginPx = null;
+    dragCreateActive = false;
   }
 
   // ── Rendering ──
@@ -247,6 +256,17 @@ export function setupInteraction(
 
   function notifyChange(): void {
     onSceneChange?.();
+  }
+
+  /** Can this tool be created via click-drag (mousedown → drag → mouseup)? */
+  function toolSupportsDragCreate(): boolean {
+    return (
+      activeTool === "circle" ||
+      activeTool === "segment" ||
+      activeTool === "line" ||
+      activeTool === "midpoint" ||
+      activeTool === "perp_bisector"
+    );
   }
 
   /** Check if tool expects a line click as its next input */
@@ -461,6 +481,20 @@ export function setupInteraction(
       return;
     }
 
+    // Drag-to-create: on mousedown, if no pending points yet and tool supports it,
+    // record the first point and start tracking drag
+    if (toolSupportsDragCreate() && pending.pointIds.length === 0) {
+      pushUndo();
+      const ptId = getOrCreatePoint(pos);
+      pending.pointIds.push(ptId);
+      dragCreateOriginPx = pos;
+      dragCreateActive = false;
+      rerender();
+      notifyChange();
+      e.preventDefault();
+      return;
+    }
+
     handleToolClick(pos);
     e.preventDefault();
   }
@@ -493,6 +527,15 @@ export function setupInteraction(
 
     canvas.style.cursor = "crosshair";
 
+    // Check if we've started a drag-create gesture
+    if (dragCreateOriginPx && pending.pointIds.length >= 1) {
+      const dx = pos[0] - dragCreateOriginPx[0];
+      const dy = pos[1] - dragCreateOriginPx[1];
+      if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD_PX) {
+        dragCreateActive = true;
+      }
+    }
+
     // Update highlights based on what tool expects next
     if (toolNeedsLineNext()) {
       highlightLineId = hitTestLine(pos);
@@ -506,7 +549,36 @@ export function setupInteraction(
     rerender();
   }
 
-  function onUp(): void {
+  function onUp(e?: MouseEvent | TouchEvent): void {
+    // Drag-to-create: if user dragged enough, complete the construction on mouseup
+    if (dragCreateActive && pending.pointIds.length >= 1 && toolSupportsDragCreate()) {
+      const pos = e ? getEventPos(e) : null;
+      if (pos) {
+        const ptId = getOrCreatePoint(pos);
+        if (ptId !== pending.pointIds[pending.pointIds.length - 1]) {
+          pending.pointIds.push(ptId);
+          if (pending.pointIds.length >= toolPointCount()) {
+            executeConstruction();
+            resetPending();
+            dragCreateOriginPx = null;
+            dragCreateActive = false;
+            rerender();
+            notifyChange();
+            return;
+          }
+        }
+      }
+      dragCreateOriginPx = null;
+      dragCreateActive = false;
+      rerender();
+      notifyChange();
+      return;
+    }
+
+    // If mousedown didn't drag, keep the pending point for click-click flow
+    dragCreateOriginPx = null;
+    dragCreateActive = false;
+
     if (drag) {
       if (drag.kind === "point") {
         const override = pointOverrides.get(drag.id);
@@ -606,18 +678,20 @@ export function setupInteraction(
 
   canvas.addEventListener("mousedown", onDown);
   canvas.addEventListener("mousemove", onMove);
-  canvas.addEventListener("mouseup", onUp);
+  canvas.addEventListener("mouseup", (e) => onUp(e));
   canvas.addEventListener("mouseleave", () => {
     onUp();
     currentSnap = null;
     ghostPos = null;
     highlightLineId = null;
+    dragCreateOriginPx = null;
+    dragCreateActive = false;
     if (activeTool !== "pointer") rerender();
   });
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("touchstart", onDown, { passive: false });
   canvas.addEventListener("touchmove", onMove, { passive: false });
-  canvas.addEventListener("touchend", onUp);
+  canvas.addEventListener("touchend", (e) => onUp(e));
 
   canvas.tabIndex = 0;
   canvas.addEventListener("keydown", onKeyDown);
