@@ -102,7 +102,7 @@ style:
 
 ### Manual
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/YOUR_USERNAME/obsidian-geometry/releases)
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/RenanZortea/obsidian-geometry/releases)
 2. Create a folder `geometry` inside your vault's `.obsidian/plugins/` directory
 3. Place the three files inside it
 4. Restart Obsidian and enable the plugin in **Settings > Community Plugins**
