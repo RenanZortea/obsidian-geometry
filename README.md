@@ -7,7 +7,7 @@ An interactive compass-and-straightedge geometry plugin for [Obsidian](https://o
 
 - **YAML-driven constructions** — define points, lines, segments, rays, circles, polygons, intersections, midpoints, perpendiculars, parallels, and angle bisectors
 - **Interactive canvas** — pan (click-drag), zoom (scroll wheel), and drag points in real time
-- **Euclidea-style toolbar** with 12 tools:
+- **[Euclidea](https://www.euclidea.xyz/)-style toolbar** with 12 tools:
   - **Pointer** — select, drag points, pan the view
   - **Point** — place a free point
   - **Line** — infinite line through two points
