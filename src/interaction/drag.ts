@@ -258,22 +258,19 @@ export function setupInteraction(
   function handleToolClick(pxPos: Vec2): void {
     // Text tool: place text at coordinates without creating a point
     if (activeTool === "text") {
-      pushUndo();
       const snap = findSnapTarget(pxPos);
       const mathPos: Vec2 = snap ? snap.pos : transform.toMath(pxPos);
-      const content = prompt("Enter label text:");
-      if (!content) {
-        undoStack.pop(); // nothing happened
-        return;
-      }
-      scene.constructions.push({
-        type: "text",
-        content,
-        pos: mathPos,
-        id: `T${counters.text++}`,
+      showTextInput(pxPos, (content: string) => {
+        pushUndo();
+        scene.constructions.push({
+          type: "text",
+          content,
+          pos: mathPos,
+          id: `T${counters.text++}`,
+        });
+        rerender();
+        notifyChange();
       });
-      rerender();
-      notifyChange();
       return;
     }
 
@@ -557,6 +554,38 @@ export function setupInteraction(
       redo();
       return;
     }
+  }
+
+  function showTextInput(pxPos: Vec2, onCommit: (text: string) => void): void {
+    const rect = canvas.getBoundingClientRect();
+    const container = canvas.parentElement;
+    if (!container) return;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Label...";
+    input.className = "geometry-text-input";
+    input.style.position = "absolute";
+    input.style.left = `${pxPos[0] - 50}px`;
+    input.style.top = `${pxPos[1] - 16}px`;
+    input.style.width = "100px";
+    input.style.zIndex = "100";
+
+    const commit = () => {
+      const value = input.value.trim();
+      if (input.parentElement) input.remove();
+      if (value) onCommit(value);
+    };
+
+    input.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+      if (e.key === "Escape") { e.preventDefault(); input.remove(); }
+      e.stopPropagation();
+    });
+    input.addEventListener("blur", commit);
+
+    container.appendChild(input);
+    input.focus();
   }
 
   canvas.addEventListener("mousedown", onDown);

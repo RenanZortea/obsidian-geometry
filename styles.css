@@ -120,6 +120,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Inline text input ── */
+
+.geometry-text-input {
+  font-size: 14px;
+  padding: 2px 6px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .geometry-error {
   color: var(--text-error);
   background: var(--background-modifier-error);
