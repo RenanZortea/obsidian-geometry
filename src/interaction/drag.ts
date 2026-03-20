@@ -256,6 +256,27 @@ export function setupInteraction(
   // ── Generic tool click dispatch ──
 
   function handleToolClick(pxPos: Vec2): void {
+    // Text tool: place text at coordinates without creating a point
+    if (activeTool === "text") {
+      pushUndo();
+      const snap = findSnapTarget(pxPos);
+      const mathPos: Vec2 = snap ? snap.pos : transform.toMath(pxPos);
+      const content = prompt("Enter label text:");
+      if (!content) {
+        undoStack.pop(); // nothing happened
+        return;
+      }
+      scene.constructions.push({
+        type: "text",
+        content,
+        pos: mathPos,
+        id: `T${counters.text++}`,
+      });
+      rerender();
+      notifyChange();
+      return;
+    }
+
     // Tools that need a line first
     if (toolNeedsLineNext()) {
       const lineId = hitTestLine(pxPos);
@@ -402,21 +423,9 @@ export function setupInteraction(
         break;
       }
 
-      case "text": {
-        const content = prompt("Enter label text:");
-        if (!content) {
-          // User cancelled — undo the point creation
-          if (undoStack.length > 0) restoreSnapshot(undoStack.pop()!);
-          break;
-        }
-        scene.constructions.push({
-          type: "text",
-          content,
-          at: pts[0],
-          id: `T${counters.text++}`,
-        });
+      case "text":
+        // Handled directly in handleToolClick — should not reach here
         break;
-      }
     }
   }
 

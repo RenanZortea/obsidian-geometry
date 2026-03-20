@@ -9,6 +9,7 @@ import {
   ResolvedRay,
   ResolvedCircle,
   ResolvedText,
+  ResolvedArc,
   Vec2,
 } from "../types";
 import * as geo from "./geo";
@@ -19,28 +20,52 @@ export function solve(
   pointOverrides?: Map<string, Vec2>
 ): ResolvedScene {
   const objects = new Map<string, ResolvedObject>();
+  const slideMap = new Map<string, number>();
 
   // Helper: get all resolved point positions for expression evaluation
   const resolvedPoints = new Map<string, Vec2>();
 
-  // Seed explicit points
+  // Seed explicit points — always visible (slide 0)
   for (const [id, coords] of Object.entries(scene.points)) {
     const pos = pointOverrides?.get(id) ?? coords;
     const point: ResolvedPoint = { type: "point", id, pos, draggable: true };
     objects.set(id, point);
     resolvedPoints.set(id, pos);
+    slideMap.set(id, 0);
   }
 
-  // Process constructions in order
+  // Process constructions in order, tracking slide assignments
+  let currentSlide = 1;
   for (const step of scene.constructions) {
+    const slide = step.slide ?? currentSlide;
+    currentSlide = slide;
+
+    // Track object count before resolving to capture all IDs added
+    const beforeIds = new Set(objects.keys());
     resolveStep(step, objects, resolvedPoints);
+
+    // Assign slide number to all newly added objects
+    for (const id of objects.keys()) {
+      if (!beforeIds.has(id)) {
+        slideMap.set(id, slide);
+      }
+    }
+
+    // Auto-increment for next step if no explicit slide was set
+    if (step.slide === undefined) {
+      currentSlide = slide + 1;
+    }
   }
+
+  const totalSlides = slideMap.size > 0 ? Math.max(...slideMap.values()) : 0;
 
   return {
     objects,
     config: scene.config,
     style: scene.style,
     title: scene.title,
+    slideMap,
+    totalSlides,
   };
 }
 
@@ -72,6 +97,10 @@ function resolveStep(
       return resolveText(step, objects, points);
     case "polygon":
       return resolvePolygon(step, objects, points);
+    case "arc":
+      return resolveArc(step, objects, points);
+    case "angle_mark":
+      return resolveAngleMark(step, objects, points);
   }
 }
 
@@ -314,4 +343,38 @@ function resolvePolygon(
 ): void {
   const verts = step.vertices.map((id) => getPoint(id, points));
   objects.set(step.id, { type: "polygon", id: step.id, vertices: verts });
+}
+
+function resolveArc(
+  step: { center: string; from: string; to: string; id: string },
+  objects: Map<string, ResolvedObject>,
+  points: Map<string, Vec2>
+): void {
+  const center = getPoint(step.center, points);
+  const from = getPoint(step.from, points);
+  const to = getPoint(step.to, points);
+  const radius = geo.dist(center, from);
+  objects.set(step.id, { type: "arc", id: step.id, center, from, to, radius });
+}
+
+function resolveAngleMark(
+  step: { points: [string, string, string]; id: string },
+  objects: Map<string, ResolvedObject>,
+  points: Map<string, Vec2>
+): void {
+  const a = getPoint(step.points[0], points);
+  const vertex = getPoint(step.points[1], points);
+  const b = getPoint(step.points[2], points);
+
+  // Angles from vertex to each arm point (math coords: Y up)
+  const startAngle = Math.atan2(a[1] - vertex[1], a[0] - vertex[0]);
+  const endAngle = Math.atan2(b[1] - vertex[1], b[0] - vertex[0]);
+
+  objects.set(step.id, {
+    type: "angle_mark",
+    id: step.id,
+    vertex,
+    startAngle,
+    endAngle,
+  });
 }

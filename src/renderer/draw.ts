@@ -16,7 +16,9 @@ export function renderScene(
   ctx: CanvasRenderingContext2D,
   scene: ResolvedScene,
   transform: Transform,
-  theme: ThemeColors
+  theme: ThemeColors,
+  /** In presentation mode, only show objects with slide <= this value */
+  visibleSlide?: number
 ): void {
   const { width, height } = scene.config;
 
@@ -37,7 +39,17 @@ export function renderScene(
     ctx.restore();
   }
 
-  const ordered = sortByZOrder([...scene.objects.values()]);
+  let allObjects = [...scene.objects.values()];
+
+  // Filter by slide if in presentation mode
+  if (visibleSlide !== undefined) {
+    allObjects = allObjects.filter(obj => {
+      const slide = scene.slideMap.get(obj.id);
+      return slide !== undefined && slide <= visibleSlide;
+    });
+  }
+
+  const ordered = sortByZOrder(allObjects);
 
   for (const obj of ordered) {
     const style = scene.style[obj.id] ?? {};
@@ -48,6 +60,8 @@ export function renderScene(
 const Z_ORDER: Record<string, number> = {
   polygon: 0,
   circle: 1,
+  arc: 1,
+  angle_mark: 1,
   line: 2,
   segment: 2,
   ray: 2,
@@ -81,6 +95,10 @@ function drawObject(
       return drawText(ctx, obj.content, obj.pos, style, transform, theme);
     case "polygon":
       return drawPolygon(ctx, obj.vertices, style, transform, theme);
+    case "arc":
+      return drawArc(ctx, obj.center, obj.from, obj.to, obj.radius, style, transform, theme);
+    case "angle_mark":
+      return drawAngleMark(ctx, obj.vertex, obj.startAngle, obj.endAngle, style, transform, theme);
   }
 }
 
@@ -275,6 +293,86 @@ function drawText(
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
   ctx.fillText(content, px, py - 6);
+  ctx.restore();
+}
+
+const DEFAULT_ANGLE_MARK_RADIUS = 20; // pixels
+
+function drawAngleMark(
+  ctx: CanvasRenderingContext2D,
+  vertex: Vec2,
+  startAngle: number,
+  endAngle: number,
+  style: StyleDef,
+  transform: Transform,
+  theme: ThemeColors
+): void {
+  const [vx, vy] = transform.toPixel(vertex);
+  const rPx = style.size ?? DEFAULT_ANGLE_MARK_RADIUS;
+
+  // Convert from math coords (Y up) to canvas coords (Y down) by negating angles
+  const canvasStart = -startAngle;
+  const canvasEnd = -endAngle;
+
+  // Sweep counterclockwise in math coords = clockwise in canvas coords (anticlockwise=false)
+  // We want the smaller arc that goes from A to B through the interior angle
+  // Canvas arc with anticlockwise=true sweeps CCW in canvas = CW in math
+  // We need to pick the right direction so the arc covers the interior angle
+
+  ctx.save();
+
+  if (style.fill) {
+    ctx.fillStyle = style.fill;
+    ctx.beginPath();
+    ctx.moveTo(vx, vy);
+    ctx.arc(vx, vy, rPx, canvasStart, canvasEnd, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  applyStroke(ctx, style, theme);
+  ctx.beginPath();
+  ctx.arc(vx, vy, rPx, canvasStart, canvasEnd, true);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawArc(
+  ctx: CanvasRenderingContext2D,
+  center: Vec2,
+  from: Vec2,
+  to: Vec2,
+  radius: number,
+  style: StyleDef,
+  transform: Transform,
+  theme: ThemeColors
+): void {
+  const [cx, cy] = transform.toPixel(center);
+  const [fx, fy] = transform.toPixel(from);
+  const [tx, ty] = transform.toPixel(to);
+  const rPx = radius * transform.scale;
+
+  // Canvas Y is flipped relative to math coords, so negate Y deltas
+  const startAngle = Math.atan2(-(fy - cy), fx - cx);
+  const endAngle = Math.atan2(-(ty - cy), tx - cx);
+
+  ctx.save();
+
+  if (style.fill) {
+    ctx.fillStyle = style.fill;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, rPx, startAngle, endAngle, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  applyStroke(ctx, style, theme);
+  ctx.beginPath();
+  ctx.arc(cx, cy, rPx, startAngle, endAngle, true);
+  ctx.stroke();
+
   ctx.restore();
 }
 

@@ -14,6 +14,7 @@ const DEFAULT_CONFIG: ConfigDef = {
   height: 400,
   scale: 50,
   interactive: true,
+  presentation: false,
 };
 
 export function parseGeometry(source: string): GeometryScene {
@@ -76,19 +77,40 @@ function parseOneConstruction(item: unknown, index: number): ConstructionStep {
   }
   const obj = item as Record<string, unknown>;
 
-  if (obj.line) return parseLineStep(obj.line);
-  if (obj.segment) return parseSegmentStep(obj.segment);
-  if (obj.ray) return parseRayStep(obj.ray);
-  if (obj.circle) return parseCircleStep(obj.circle);
-  if (obj.intersect) return parseIntersectStep(obj.intersect);
-  if (obj.midpoint) return parseMidpointStep(obj.midpoint);
-  if (obj.perpendicular) return parsePerpendicularStep(obj.perpendicular);
-  if (obj.parallel) return parseParallelStep(obj.parallel);
-  if (obj.angle_bisector) return parseAngleBisectorStep(obj.angle_bisector);
-  if (obj.text) return parseTextStep(obj.text);
-  if (obj.polygon) return parsePolygonStep(obj.polygon);
+  // Extract optional slide number from the inner object
+  const extractSlide = (raw: unknown): number | undefined => {
+    if (raw && typeof raw === "object") {
+      const s = (raw as Record<string, unknown>).slide;
+      if (typeof s === "number") return s;
+    }
+    return undefined;
+  };
 
-  throw new Error(`Construction #${index + 1}: unknown type. Keys: ${Object.keys(obj).join(", ")}`);
+  let step: ConstructionStep;
+
+  if (obj.line) step = parseLineStep(obj.line);
+  else if (obj.segment) step = parseSegmentStep(obj.segment);
+  else if (obj.ray) step = parseRayStep(obj.ray);
+  else if (obj.circle) step = parseCircleStep(obj.circle);
+  else if (obj.intersect) step = parseIntersectStep(obj.intersect);
+  else if (obj.midpoint) step = parseMidpointStep(obj.midpoint);
+  else if (obj.perpendicular) step = parsePerpendicularStep(obj.perpendicular);
+  else if (obj.parallel) step = parseParallelStep(obj.parallel);
+  else if (obj.angle_bisector) step = parseAngleBisectorStep(obj.angle_bisector);
+  else if (obj.text) step = parseTextStep(obj.text);
+  else if (obj.polygon) step = parsePolygonStep(obj.polygon);
+  else if (obj.arc) step = parseArcStep(obj.arc);
+  else if (obj.angle_mark) step = parseAngleMarkStep(obj.angle_mark);
+  else throw new Error(`Construction #${index + 1}: unknown type. Keys: ${Object.keys(obj).join(", ")}`);
+
+  // Attach slide number if present
+  const typeKey = Object.keys(obj).find(k => k !== "slide");
+  const slide = extractSlide(typeKey ? obj[typeKey] : undefined);
+  if (slide !== undefined) {
+    step.slide = slide;
+  }
+
+  return step;
 }
 
 function parseLineStep(raw: unknown): ConstructionStep {
@@ -186,6 +208,20 @@ function parsePolygonStep(raw: unknown): ConstructionStep {
     throw new Error("polygon: 'vertices' must have at least 3 points");
   }
   return { type: "polygon", vertices, id: str(o.id) };
+}
+
+function parseAngleMarkStep(raw: unknown): ConstructionStep {
+  const o = raw as Record<string, unknown>;
+  const pts = o.points as string[];
+  if (!Array.isArray(pts) || pts.length !== 3) {
+    throw new Error("angle_mark: 'points' must be [A, vertex, B]");
+  }
+  return { type: "angle_mark", points: [pts[0], pts[1], pts[2]], id: str(o.id) };
+}
+
+function parseArcStep(raw: unknown): ConstructionStep {
+  const o = raw as Record<string, unknown>;
+  return { type: "arc", center: str(o.center), from: str(o.from), to: str(o.to), id: str(o.id) };
 }
 
 function parseStyles(raw: unknown): Record<string, StyleDef> {

@@ -68,7 +68,8 @@ config:
 | `scale`       | 50      | Pixels per unit                  |
 | `grid`        | false   | Show grid lines                  |
 | `axes`        | false   | Show coordinate axes             |
-| `interactive` | true    | Enable toolbar and interactions  |
+| `interactive`   | true    | Enable toolbar and interactions   |
+| `presentation`  | false   | Step-by-step presentation mode    |
 
 ### Construction types
 
@@ -85,6 +86,50 @@ config:
 | `angle_bisector`     | `points: [A, vertex, B]`, `id`                         |
 | `text`               | `content`, `at` (point id) or `pos: [x, y]`, `id`     |
 | `polygon`            | `vertices: [P1, P2, ...]`, `id`                        |
+| `arc`                | `center`, `from`, `to`, `id`                            |
+| `angle_mark`         | `points: [A, vertex, B]`, `id`                          |
+
+### Presentation mode
+
+Add `presentation: true` to your config to step through constructions one at a time with forward/back controls:
+
+````markdown
+```geometry
+points:
+  A: [0, 0]
+  B: [4, 0]
+  C: [2, 3]
+
+constructions:
+  - segment: {from: A, to: B, id: AB}       # slide 1
+  - segment: {from: B, to: C, id: BC}       # slide 2
+  - segment: {from: C, to: A, id: CA}       # slide 3
+  - midpoint: {of: [A, B], id: M}           # slide 4
+  - segment: {from: C, to: M, id: median}   # slide 5
+
+config:
+  presentation: true
+```
+````
+
+Each construction step automatically becomes its own slide. Base points (from the `points:` section) are always visible.
+
+To **group multiple steps on the same slide**, add an explicit `slide` number:
+
+```yaml
+constructions:
+  - segment: {from: A, to: B, id: AB, slide: 1}
+  - segment: {from: B, to: C, id: BC, slide: 1}   # same slide
+  - segment: {from: C, to: A, id: CA, slide: 1}    # triangle appears at once
+  - midpoint: {of: [A, B], id: M, slide: 2}
+  - segment: {from: C, to: M, id: median, slide: 2}
+```
+
+**Controls:**
+- **◀ / ▶ buttons** at the bottom of the canvas
+- **Arrow keys** (left / right) and **spacebar** for keyboard navigation
+- **Mouse drag** to pan, **scroll wheel** to zoom
+- Counter shows current step / total steps
 
 ### Styling
 
