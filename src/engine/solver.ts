@@ -8,6 +8,7 @@ import {
   ResolvedSegment,
   ResolvedRay,
   ResolvedCircle,
+  ResolvedText,
   Vec2,
 } from "../types";
 import * as geo from "./geo";
@@ -67,6 +68,8 @@ function resolveStep(
       return resolveParallel(step, objects, points);
     case "angle_bisector":
       return resolveAngleBisector(step, objects, points);
+    case "text":
+      return resolveText(step, objects, points);
     case "polygon":
       return resolvePolygon(step, objects, points);
   }
@@ -285,6 +288,23 @@ function resolveAngleBisector(
   const b = getPoint(step.points[2], points);
   const result = geo.angleBisectorThrough(a, vertex, b);
   objects.set(step.id, { type: "line", id: step.id, point: result.point, dir: result.dir });
+}
+
+function resolveText(
+  step: { content: string; at?: string; pos?: Vec2; id: string },
+  objects: Map<string, ResolvedObject>,
+  points: Map<string, Vec2>
+): void {
+  let pos: Vec2;
+  if (step.at) {
+    pos = getPoint(step.at, points);
+  } else if (step.pos) {
+    pos = step.pos;
+  } else {
+    throw new Error(`Text '${step.id}': need 'at' or 'pos'`);
+  }
+  const resolved: ResolvedText = { type: "text", id: step.id, content: step.content, pos };
+  objects.set(step.id, resolved);
 }
 
 function resolvePolygon(

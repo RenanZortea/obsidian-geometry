@@ -45,6 +45,7 @@ export function serializeScene(scene: GeometryScene): string {
       if (s.fill) props.push(`fill: "${s.fill}"`);
       if (s.size !== undefined) props.push(`size: ${s.size}`);
       if (s.label) props.push(`label: "${s.label}"`);
+      if (s.show_length) props.push(`show_length: true`);
       lines.push(`  ${id}: {${props.join(", ")}}`);
     }
   }
@@ -101,6 +102,13 @@ function serializeStep(step: ConstructionStep): string {
       return `parallel: {to: ${step.to}, through: ${step.through}, id: ${step.id}}`;
     case "angle_bisector":
       return `angle_bisector: {points: [${step.points[0]}, ${step.points[1]}, ${step.points[2]}], id: ${step.id}}`;
+    case "text": {
+      const parts = [`content: "${step.content}"`];
+      if (step.at) parts.push(`at: ${step.at}`);
+      if (step.pos) parts.push(`pos: ${vec(step.pos)}`);
+      parts.push(`id: ${step.id}`);
+      return `text: {${parts.join(", ")}}`;
+    }
     case "polygon":
       return `polygon: {vertices: [${step.vertices.join(", ")}], id: ${step.id}}`;
   }

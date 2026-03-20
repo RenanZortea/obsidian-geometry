@@ -85,6 +85,7 @@ function parseOneConstruction(item: unknown, index: number): ConstructionStep {
   if (obj.perpendicular) return parsePerpendicularStep(obj.perpendicular);
   if (obj.parallel) return parseParallelStep(obj.parallel);
   if (obj.angle_bisector) return parseAngleBisectorStep(obj.angle_bisector);
+  if (obj.text) return parseTextStep(obj.text);
   if (obj.polygon) return parsePolygonStep(obj.polygon);
 
   throw new Error(`Construction #${index + 1}: unknown type. Keys: ${Object.keys(obj).join(", ")}`);
@@ -163,6 +164,19 @@ function parseAngleBisectorStep(raw: unknown): ConstructionStep {
     throw new Error("angle_bisector: 'points' must be [A, vertex, B]");
   }
   return { type: "angle_bisector", points: [pts[0], pts[1], pts[2]], id: str(o.id) };
+}
+
+function parseTextStep(raw: unknown): ConstructionStep {
+  const o = raw as Record<string, unknown>;
+  const step: any = { type: "text", content: str(o.content), id: str(o.id) };
+  if (o.at !== undefined) step.at = str(o.at);
+  if (o.pos !== undefined) {
+    const pos = o.pos as number[];
+    if (!Array.isArray(pos) || pos.length !== 2) throw new Error("text: 'pos' must be [x, y]");
+    step.pos = [pos[0], pos[1]];
+  }
+  if (!step.at && !step.pos) throw new Error("text: need 'at' (point id) or 'pos' ([x, y])");
+  return step;
 }
 
 function parsePolygonStep(raw: unknown): ConstructionStep {

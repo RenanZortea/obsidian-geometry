@@ -20,6 +20,7 @@ export type ConstructionStep =
   | PerpendicularStep
   | ParallelStep
   | AngleBisectorStep
+  | TextStep
   | PolygonStep;
 
 export interface LineStep {
@@ -83,6 +84,14 @@ export interface AngleBisectorStep {
   id: string;
 }
 
+export interface TextStep {
+  type: "text";
+  content: string;
+  at?: string;   // position at a point id
+  pos?: Vec2;    // or explicit [x, y] coordinates
+  id: string;
+}
+
 export interface PolygonStep {
   type: "polygon";
   vertices: string[];
@@ -96,6 +105,7 @@ export interface StyleDef {
   fill?: string;
   size?: number;
   label?: string;
+  show_length?: boolean;
 }
 
 export interface ConfigDef {
@@ -115,6 +125,7 @@ export type ResolvedObject =
   | ResolvedSegment
   | ResolvedRay
   | ResolvedCircle
+  | ResolvedText
   | ResolvedPolygon;
 
 export interface ResolvedPoint {
@@ -150,6 +161,13 @@ export interface ResolvedCircle {
   id: string;
   center: Vec2;
   radius: number;
+}
+
+export interface ResolvedText {
+  type: "text";
+  id: string;
+  content: string;
+  pos: Vec2;
 }
 
 export interface ResolvedPolygon {

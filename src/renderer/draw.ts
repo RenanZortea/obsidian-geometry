@@ -52,6 +52,7 @@ const Z_ORDER: Record<string, number> = {
   segment: 2,
   ray: 2,
   point: 3,
+  text: 4,
 };
 
 function sortByZOrder(objects: ResolvedObject[]): ResolvedObject[] {
@@ -76,6 +77,8 @@ function drawObject(
       return drawRay(ctx, obj.origin, obj.dir, style, transform, theme);
     case "circle":
       return drawCircle(ctx, obj.center, obj.radius, style, transform, theme);
+    case "text":
+      return drawText(ctx, obj.content, obj.pos, style, transform, theme);
     case "polygon":
       return drawPolygon(ctx, obj.vertices, style, transform, theme);
   }
@@ -133,6 +136,44 @@ function drawSegment(
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
+
+  // Length indicator
+  if (style.show_length) {
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const label = length.toFixed(2);
+
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+
+    // Perpendicular offset so the label doesn't overlap the segment
+    const pdx = x2 - x1;
+    const pdy = y2 - y1;
+    const pLen = Math.sqrt(pdx * pdx + pdy * pdy);
+    const nx = -pdy / (pLen || 1);
+    const ny = pdx / (pLen || 1);
+    const offset = 14;
+
+    ctx.fillStyle = style.color ?? theme.text;
+    ctx.font = "12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Rotate text to align with segment
+    const angle = Math.atan2(-(y2 - y1), x2 - x1);
+    // Flip if text would be upside down
+    const flipAngle = angle < -Math.PI / 2 || angle > Math.PI / 2
+      ? angle + Math.PI
+      : angle;
+
+    ctx.save();
+    ctx.translate(mx + nx * offset, my + ny * offset);
+    ctx.rotate(-flipAngle);
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 
@@ -213,6 +254,27 @@ function drawCircle(
   ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
   ctx.stroke();
 
+  ctx.restore();
+}
+
+function drawText(
+  ctx: CanvasRenderingContext2D,
+  content: string,
+  pos: Vec2,
+  style: StyleDef,
+  transform: Transform,
+  theme: ThemeColors
+): void {
+  if (isNaN(pos[0]) || isNaN(pos[1])) return;
+
+  const [px, py] = transform.toPixel(pos);
+
+  ctx.save();
+  ctx.fillStyle = style.color ?? theme.text;
+  ctx.font = `${style.size ?? 14}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(content, px, py - 6);
   ctx.restore();
 }
 

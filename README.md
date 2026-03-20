@@ -7,7 +7,7 @@ An interactive compass-and-straightedge geometry plugin for [Obsidian](https://o
 
 - **YAML-driven constructions** — define points, lines, segments, rays, circles, polygons, intersections, midpoints, perpendiculars, parallels, and angle bisectors
 - **Interactive canvas** — pan (click-drag), zoom (scroll wheel), and drag points in real time
-- **Euclidea-style toolbar** with 11 tools:
+- **Euclidea-style toolbar** with 12 tools:
   - **Pointer** — select, drag points, pan the view
   - **Point** — place a free point
   - **Line** — infinite line through two points
@@ -19,6 +19,8 @@ An interactive compass-and-straightedge geometry plugin for [Obsidian](https://o
   - **Parallel** — line parallel to a chosen line through a point
   - **Angle Bisector** — bisector of an angle defined by three points
   - **Compass** — circle with radius copied from two points, placed at a third
+  - **Text** — place a custom text label anywhere on the canvas
+- **Length indicators** — show segment lengths inline with `show_length: true` in style
 - **Snap to points and implicit intersections** — detects all pairwise intersections between objects automatically
 - **Undo / Redo** — `Ctrl+Z` / `Ctrl+Y` (internal stack, won't interfere with Obsidian's editor undo)
 - **Theme-aware** — adapts to Obsidian's light and dark themes
@@ -81,16 +83,27 @@ config:
 | `perpendicular`      | `to` (line id), `through` (point id), `id`             |
 | `parallel`           | `to` (line id), `through` (point id), `id`             |
 | `angle_bisector`     | `points: [A, vertex, B]`, `id`                         |
+| `text`               | `content`, `at` (point id) or `pos: [x, y]`, `id`     |
 | `polygon`            | `vertices: [P1, P2, ...]`, `id`                        |
 
 ### Styling
 
 ```yaml
 style:
-  AB: {color: "#e74c3c", width: 2, dash: true}
+  AB: {color: "#e74c3c", width: 2, dash: true, show_length: true}
   c1: {color: "#3498db"}
   A: {size: 6, label: "A"}
 ```
+
+| Property       | Description                                          |
+|----------------|------------------------------------------------------|
+| `color`        | Stroke/fill color (any CSS color)                    |
+| `width`        | Line width in pixels                                 |
+| `dash`         | Dashed line (`true` / `false`)                       |
+| `fill`         | Fill color (circles, polygons)                       |
+| `size`         | Point radius or text font size in pixels             |
+| `label`        | Custom label for points (default: point id)          |
+| `show_length`  | Show segment length inline (`true` / `false`)        |
 
 ## Installation
 

@@ -20,6 +20,7 @@ const TOOLS: { id: ToolType; label: string; icon: string }[] = [
   { id: "parallel", label: "Parallel", icon: "∥" },
   { id: "angle_bisector", label: "Angle Bisector", icon: "∠" },
   { id: "compass", label: "Compass", icon: "⊙" },
+  { id: "text", label: "Text Label", icon: "A" },
 ];
 
 export default class GeometryPlugin extends Plugin {

@@ -17,7 +17,7 @@ const MAX_UNDO = 100;
 export type ToolType =
   | "pointer" | "point" | "line" | "segment" | "circle"
   | "midpoint" | "perp_bisector" | "perpendicular" | "parallel"
-  | "angle_bisector" | "compass";
+  | "angle_bisector" | "compass" | "text";
 
 type DragMode =
   | { kind: "point"; id: string }
@@ -244,7 +244,7 @@ export function setupInteraction(
   /** How many point clicks does this tool need total? */
   function toolPointCount(): number {
     switch (activeTool) {
-      case "point": return 1;
+      case "point": case "text": return 1;
       case "line": case "segment": case "circle": case "midpoint": case "perp_bisector": return 2;
       case "perpendicular": case "parallel": return 1; // 1 point (after line click)
       case "angle_bisector": return 3;
@@ -398,6 +398,22 @@ export function setupInteraction(
           center: pts[2],
           radius: radiusExpr,
           id: `C${counters.circle++}`,
+        });
+        break;
+      }
+
+      case "text": {
+        const content = prompt("Enter label text:");
+        if (!content) {
+          // User cancelled — undo the point creation
+          if (undoStack.length > 0) restoreSnapshot(undoStack.pop()!);
+          break;
+        }
+        scene.constructions.push({
+          type: "text",
+          content,
+          at: pts[0],
+          id: `T${counters.text++}`,
         });
         break;
       }
@@ -870,6 +886,7 @@ interface Counters {
   perpendicular: number;
   parallel: number;
   angleBisector: number;
+  text: number;
 }
 
 function recalcCounters(scene: GeometryScene): Counters {
@@ -883,5 +900,6 @@ function recalcCounters(scene: GeometryScene): Counters {
     perpendicular: scene.constructions.filter((c) => c.type === "perpendicular").length + 1,
     parallel: scene.constructions.filter((c) => c.type === "parallel").length + 1,
     angleBisector: scene.constructions.filter((c) => c.type === "angle_bisector").length + 1,
+    text: scene.constructions.filter((c) => c.type === "text").length + 1,
   };
 }
