@@ -1,0 +1,9 @@
+{
+  "id": "geometry",
+  "name": "Geometry",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Render YAML code blocks into interactive geometric constructions",
+  "author": "Renan",
+  "isDesktopOnly": false
+}
